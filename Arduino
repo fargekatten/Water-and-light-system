@@ -1,0 +1,22 @@
+const int TEMP_PIN = A0;
+const int LIGHT_PIN = A1;
+const int SOUND_PIN = A2;
+
+void setup() {
+  Serial.begin(115200);
+}
+
+void loop() {
+  int temperatureRaw = analogRead(TEMP_PIN);
+  int lightRaw = analogRead(LIGHT_PIN);
+  int soundRaw = analogRead(SOUND_PIN);
+
+  // Comma-separated readings: temperature, light, sound
+  Serial.print(temperatureRaw);
+  Serial.print(",");
+  Serial.print(lightRaw);
+  Serial.print(",");
+  Serial.println(soundRaw);
+
+  delay(100);
+}

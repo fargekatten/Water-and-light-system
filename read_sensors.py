@@ -1,30 +1,14 @@
-import time
-import serial
+"""Show soil warnings/simulation without controlling Hue."""
 import os
+import time
+from sensor_stream import SensorStream
+
 
 def main():
-    with serial.Serial(os.environ.get("ARDUINO_PORT", "COM7"), 115200, timeout=1) as arduino:
-        time.sleep(2)
-
-        print("Reading sensors. Press Ctrl+C to stop.")
-
+    with SensorStream(os.environ.get('ARDUINO_PORT', 'COM7')):
         while True:
-            line = arduino.readline().decode("utf-8", errors="replace").strip()
-
-            try:
-                temperature, light, sound = map(int, line.split(","))
-            except ValueError:
-                continue
-
-            darkness = "TOO DARK" if light < 500 else "LIGHT OK"
-            sound_state = "SOUND" if sound > 100 else "QUIET"
-
-            print(
-                f"Temp raw={temperature} | "
-                f"Light={light} ({darkness}) | "
-                f"Sound={sound} ({sound_state})"
-            )
+            time.sleep(1)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

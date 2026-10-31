@@ -19,7 +19,7 @@ with tempfile.TemporaryDirectory(prefix='water-light-') as temporary:
     source = repo / ('watering_system.ino' if args.sketch == 'watering_system' else 'Arduino')
     shutil.copy2(source, sketch / (args.sketch + '.ino'))
     if args.sketch == 'watering_system':
-        for name in ('arduino_secrets.example.h', 'arduino_secrets.h'):
+        for name in ('sensor_config.h',):
             if (repo / name).exists():
                 shutil.copy2(repo / name, sketch / name)
     command = [args.cli]

@@ -1,0 +1,22 @@
+import json
+import time
+from urllib.request import urlopen
+
+
+
+url = (
+    f"https://api.thingspeak.com/channels/"
+    f"{CHANNEL_ID}/feeds/last.json?api_key={READ_API_KEY}"
+)
+
+while True:
+    with urlopen(url, timeout=10) as response:
+        reading = json.load(response)
+
+    print(
+        "Temperature:", reading.get("field1"),
+        "| Light:", reading.get("field2"),
+        "| Sound:", reading.get("field3")
+    )
+
+    time.sleep(20)

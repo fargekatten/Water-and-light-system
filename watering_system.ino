@@ -1,6 +1,16 @@
 #define TS_ENABLE_SSL
 #include <WiFiNINA.h>
 #include <ThingSpeak.h>
+#if __has_include("arduino_secrets.h")
+#include "arduino_secrets.h"
+#else
+#include "arduino_secrets.example.h"
+#endif
+
+const char* ssid = SECRET_SSID;
+const char* pass = SECRET_PASS;
+const unsigned long channelNumber = SECRET_CHANNEL_NUMBER;
+const char* writeAPIKey = SECRET_WRITE_API_KEY;
 
 
 

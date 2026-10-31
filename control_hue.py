@@ -2,38 +2,35 @@ import json
 import ssl
 import time
 from urllib.request import Request, urlopen
+import os
+
+from settings import required
+from read_thingspeak import get_latest_reading
 
 # Fyll inn verdiene dine. Ikke del API-nøklene eller Hue-brukernavnet.
 
 
-SOUND_THRESHOLD = 00
+SOUND_THRESHOLD = int(os.environ.get("SOUND_THRESHOLD", "100"))
 DARK_THRESHOLD = 500
 LIGHT_IDS = [4, 5, 6]  # Spilevegg 3, 2 og 1
 POLL_SECONDS = 20
 
-# Hue Bridge kan ha et lokalt HTTPS-sertifikat Python ikke kjenner igjen.
-# Dette brukes bare for forbindelsen til Hue Bridge på hjemmenettverket.
-HUE_SSL_CONTEXT = ssl._create_unverified_context()
-
-
-
 def get_latest_readings():
-    url = (
-        f"https://api.thingspeak.com/channels/{CHANNEL_ID}"
-        f"/feeds/last.json?api_key={READ_API_KEY}"
-    )
+    data = get_latest_reading()
+    return float(data["field2"]), float(data["field3"])
 
-    with urlopen(url, timeout=10) as response:
-        data = json.loads(response.read().decode("utf-8"))
 
-    light = float(data["field2"])
-    sound = float(data["field3"])
-    return light, sound
+def choose_state(light, sound):
+    if sound > SOUND_THRESHOLD:
+        return {"on": True, "bri": 127, "ct": 454}, "gult, halv styrke"
+    if light < DARK_THRESHOLD:
+        return {"on": True, "bri": 254, "ct": 222}, "hvitt, full styrke"
+    return {"on": True, "bri": 254, "ct": 454}, "gult, full styrke"
 
 
 def set_light(light_id, state):
     url = (
-        f"https://{BRIDGE_IP}/api/{HUE_USERNAME}"
+        f"https://{required('HUE_BRIDGE_HOST')}/api/{required('HUE_USERNAME')}"
         f"/lights/{light_id}/state"
     )
 
@@ -47,7 +44,7 @@ def set_light(light_id, state):
 
     with urlopen(
         request,
-        context=HUE_SSL_CONTEXT,
+        context=ssl.create_default_context(cafile=os.environ.get("HUE_CA_FILE")),
         timeout=10,
     ) as response:
         result = json.loads(response.read().decode("utf-8"))
@@ -56,34 +53,26 @@ def set_light(light_id, state):
         raise RuntimeError(f"Hue svarte med en feil: {result}")
 
 
-print("Leser lys og lyd fra ThingSpeak. Trykk Ctrl+C for å stoppe.")
+def main():
+    for name in ("THINGSPEAK_CHANNEL_ID", "THINGSPEAK_READ_API_KEY",
+                 "HUE_BRIDGE_HOST", "HUE_USERNAME"):
+        required(name)
+    print("Leser lys og lyd fra ThingSpeak. Trykk Ctrl+C for å stoppe.")
+    last_state = None
+    while True:
+        try:
+            light, sound = get_latest_readings()
+            state, mode = choose_state(light, sound)
+            print(f"Lys: {light:g} | Lyd: {sound:g} | Modus: {mode}")
+            if state != last_state:
+                for light_id in LIGHT_IDS:
+                    set_light(light_id, state)
+                last_state = state
+        except Exception as error:
+            # Exception strings from HTTP clients can contain credential-bearing URLs.
+            print(f"Forespørselen mislyktes ({type(error).__name__}); sjekk nettverk og konfigurasjon.")
+        time.sleep(POLL_SECONDS)
 
-last_state = None
 
-while True:
-    try:
-        light, sound = get_latest_readings()
-
-        if sound > SOUND_THRESHOLD:
-            state = {"on": True, "bri": 127, "ct": 454}
-            mode = "gult, halv styrke"
-        elif light < DARK_THRESHOLD:
-            state = {"on": True, "bri": 254, "ct": 222}
-            mode = "hvitt, full styrke"
-        else:
-            state = {"on": True, "bri": 254, "ct": 454}
-            mode = "gult, full styrke"
-
-        print(f"Lys: {light:g} | Lyd: {sound:g} | Modus: {mode}")
-
-        if state != last_state:
-            for light_id in LIGHT_IDS:
-                set_light(light_id, state)
-                print(f"Lys {light_id} oppdatert")
-
-            last_state = state
-
-    except Exception as error:
-        print(f"Feil: {error}")
-
-    time.sleep(POLL_SECONDS)
+if __name__ == "__main__":
+    main()

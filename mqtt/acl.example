@@ -1,0 +1,5 @@
+user sensor-rom101
+topic write school/rom101/sensors
+
+user controller-rom101
+topic read school/rom101/sensors

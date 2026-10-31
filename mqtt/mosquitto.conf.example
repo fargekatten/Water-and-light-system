@@ -1,0 +1,12 @@
+# Copy and adapt paths. No public/unencrypted/anonymous listener.
+# Bind only to the server's PRIVATE LAN address (replace before use).
+listener 8883 YOUR_SERVER_PRIVATE_IP
+allow_anonymous false
+cafile /absolute/path/to/ca.crt
+certfile /absolute/path/to/server.crt
+keyfile /absolute/path/to/server.key
+password_file /absolute/path/to/passwords
+acl_file /absolute/path/to/acl
+persistence false
+# TLS with unique username/password per node; only selected clients trust this CA.
+tls_version tlsv1.2

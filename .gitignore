@@ -3,3 +3,6 @@
 __pycache__/
 *.pyc
 arduino_secrets.h
+instance/
+mqtt/private/
+firmware/wifi_sensor/arduino_secrets.h

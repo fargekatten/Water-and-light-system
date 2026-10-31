@@ -1,5 +1,16 @@
 # Lysstyring og jordfuktighet
 
+**Nytt: Wi-Fi/MQTT og privat webapp med manuell styring.**
+Se [WEB_MQTT.md](WEB_MQTT.md) for demo, nettverksoppsett, valgfri skyeksport og
+faglig arkitektur. Les [SECURITY.md](SECURITY.md) før du kobler til hjemmenettet.
+Demo kontakter ikke Hue. Webappen er bare tilgjengelig på lokal loopback som standard.
+Broker og kontroller kan kjøre på samme PC; en egen Raspberry Pi/server er valgfri.
+Du trenger lokal Wi-Fi/ruter og MQTT-broker i tillegg til delelisten under.
+Ingen LoRa- eller BLE-utstyr trengs for den implementerte løsningen.
+
+**Resten av denne siden dokumenterer USB-alternativet og felles koblinger.**
+
+
 For **Arduino Uno WiFi Rev2**, Philips Hue og en PC som kjører Python.
 Arduino sender sensordata via USB hvert 100. millisekund. Python leser kontinuerlig
 og styrer Hue-broen på lokalnettet. ThingSpeak brukes ikke til lysstyringen;

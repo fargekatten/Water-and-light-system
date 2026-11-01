@@ -11,10 +11,11 @@ PRESETS = {'white': WHITE, 'warm': WARM, 'cinema': CINEMA, 'off': OFF}
 
 
 class Hub:
-    def __init__(self, demo=False):
+    def __init__(self, demo=False, manual_only=False):
         self.lock = threading.RLock()
         self.policy = LightingPolicy(time.monotonic())
         self.demo = demo
+        self.manual_only = manual_only
         self.sample = None
         self.override = None
         self.override_until = 0
@@ -47,7 +48,7 @@ class Hub:
                 return
             if mode not in PRESETS:
                 raise ValueError('Ukjent lysmodus')
-            if self.policy.last_sample is None or now - self.policy.last_sample > 3:
+            if not self.manual_only and (self.policy.last_sample is None or now - self.policy.last_sample > 3):
                 raise ValueError('Ferske sensordata kreves før manuell styring')
             if self.policy.screen_down:
                 raise ValueError('Lerretet er nede; fysisk kinomodus har prioritet')
@@ -58,13 +59,17 @@ class Hub:
         now = time.monotonic() if now is None else now
         local_time = local_time or datetime.now(ZoneInfo('Europe/Oslo'))
         with self.lock:
+            if self.override and now >= self.override_until:
+                self.override = None
             automatic, mode = self.policy.desired(local_time, now)
-            if automatic is None or self.policy.screen_down:
+            if self.manual_only:
+                if self.policy.screen_down:
+                    return CINEMA.copy(), 'lerret nede: oransje, 25 %'
+                automatic, mode = None, 'manuell modus uten sensorer: beholder gjeldende lys'
+            if (automatic is None and not self.manual_only) or self.policy.screen_down:
                 return automatic, mode
             if self.override and now < self.override_until:
                 return PRESETS[self.override].copy(), 'manuell: ' + self.override
-            if self.override:
-                self.override = None
             return automatic, mode
 
     def status(self):
@@ -76,7 +81,7 @@ class Hub:
                 history = []
                 self.storage_error = 'Lokal sensorhistorikk kunne ikke leses; sjekk filrettigheter.'
             _, mode = self.desired(now)
-            return dict(demo=self.demo, mode=mode, sample=self.sample,
+            return dict(demo=self.demo, manual_only=self.manual_only, mode=mode, sample=self.sample,
                         fresh=self.policy.last_sample is not None and now - self.policy.last_sample <= 3,
                         manual_seconds=max(0, int(self.override_until - now)) if self.override else 0,
                         watering_simulated=now < self.simulation_until,

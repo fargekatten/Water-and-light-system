@@ -1,5 +1,8 @@
 # Automatisk plante- og Hue-lyssystem
 
+Skolestyring av Hue via ThingSpeak TalkBack og manuell demonstrasjon uten Arduino:
+se [TALKBACK.md](TALKBACK.md). Kommandoene er WHITE, WARM, CINEMA, OFF og AUTO.
+
 Prosjektet bruker Arduino Uno WiFi Rev2, Grove-shield, lyssensor, bevegelsessensor, kontakt på prosjektorlerretet, jordfuktighetssensor, Hue Bridge og en PC hjemme. PC-en kan kjøre den lokale MQTT-brokeren, Python-kontrolleren, webappen og lagre sensorhistorikken.
 
 ## Lysregler

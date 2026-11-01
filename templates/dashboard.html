@@ -9,13 +9,17 @@
 </head>
 <body><main>
 <h1>Plante- og lysstyring</h1>
+{% if status.manual_only %}
+<p role="status">Manuell styring uten sensorer. Fysisk lerretsposisjon kan ikke oppdages. AUTO og utløp beholder siste lys.</p>
+{% else %}
 <p>{{ 'DEMO – simulerte sensorer, ingen fysiske lys styres' if status.demo else 'Lokal styring via Arduino og MQTT' }}</p>
+{% endif %}
 {% if message %}<p role="status">{{ message }}</p>{% endif %}
 <section>
 <h2>Lys</h2>
 <p>Automatisk modus: {{ status.mode }}<br>Sist utført: {{ status.applied or 'Ingen' }}</p>
 {% if status.error %}<p role="alert">{{ status.error }}</p>{% endif %}
-<p>Manuell modus gjelder i opptil 15 minutter. Lerret nede gir alltid kinolys.</p>
+<p>Manuell modus gjelder i opptil 15 minutter. Registrert lerret nede gir alltid kinolys.</p>
 <form action="/mode" method="post">
 <input type="hidden" name="csrf" value="{{ session.csrf }}">
 {% for mode,label in [('auto','Automatisk'),('white','Hvitt 100 %'),('warm','Gult 50 %'),('cinema','Oransje 25 %'),('off','Av')] %}

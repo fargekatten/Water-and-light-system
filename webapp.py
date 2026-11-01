@@ -136,10 +136,14 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--demo', action='store_true', help='No MQTT or Hue connections')
     parser.add_argument('--cloud', action='store_true', help='Opt-in soil-only ThingSpeak export')
+    parser.add_argument('--talkback', action='store_true', help='Poll ThingSpeak lighting commands')
+    parser.add_argument('--manual-only', action='store_true', help='Explicit sensorless Hue control; no automatic sensor rules')
     args = parser.parse_args()
     if args.demo and args.cloud:
         parser.error('Demo-data skal ikke eksporteres til skyen')
-    hub = Hub(demo=args.demo)
+    if args.manual_only and (args.demo or args.cloud):
+        parser.error('--manual-only kan ikke kombineres med --demo eller --cloud')
+    hub = Hub(demo=args.demo, manual_only=args.manual_only)
     app = create_app(hub)
     stop = threading.Event()
     client = None
@@ -149,8 +153,13 @@ def main():
         from settings import required
         required('HUE_BRIDGE_HOST')
         required('HUE_USERNAME')
-        from mqtt_input import connect
-        client = connect(hub)
+        if not args.manual_only:
+            from mqtt_input import connect
+            client = connect(hub)
+    if args.talkback:
+        from talkback import from_environment, poll_loop
+        consumer = from_environment(hub)
+        threading.Thread(target=poll_loop, args=(consumer, stop), daemon=True).start()
     if args.cloud:
         from settings import required
         required('THINGSPEAK_WRITE_API_KEY')

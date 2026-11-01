@@ -1,8 +1,50 @@
-<!doctype html><html lang="no"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Romstyring</title><link rel="stylesheet" href="/static/style.css"><main>
-<h1>Romstyring</h1><p>{{ 'DEMO – simulerte sensorer, ingen fysiske lys styres' if status.demo else 'Lokal MQTT-styring' }}</p>
+<!doctype html>
+<html lang="no">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width">
+<title>Plante- og lysstyring</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body><main>
+<h1>Plante- og lysstyring</h1>
+<p>{{ 'DEMO – simulerte sensorer, ingen fysiske lys styres' if status.demo else 'Lokal styring via Arduino og MQTT' }}</p>
 {% if message %}<p role="status">{{ message }}</p>{% endif %}
-<section><h2>Lys</h2><p>Ønsket modus: {{ status.mode }}<br>Sist utført: {{ status.applied or 'Ingen' }}</p>{% if status.error %}<p role="alert">{{ status.error }}</p>{% endif %}<p>Manuell styring varer inntil 15 minutter. Fysisk lerret overstyrer alltid. «Automatisk» starter en forsiktig ny ventetid.</p>
-<form action="/mode" method="post"><input type="hidden" name="csrf" value="{{ session.csrf }}">{% for mode,label in [('auto','Automatisk'),('white','Hvitt 100 %'),('warm','Gult 50 %'),('cinema','Kino 25 %'),('off','Av')] %}<button name="mode" value="{{ mode }}">{{ label }}</button>{% endfor %}</form></section>
-<section><h2>Sensorer</h2><p>{{ 'Oppdaterte data' if status.fresh else 'Mangler ferske data – lyset beholdes' }}</p>{% if status.sample %}<p>Bevegelse: {{ 'Ja' if status.sample.motion else 'Nei' }} · Lerret: {{ 'Nede' if status.sample.screen_down else 'Oppe' }}</p><p>Jordfuktighet: {{ status.sample.soil_percent }} % (kalibrert anslag). {{ 'TRENGER VANN' if status.sample.needs_water else 'Fuktighet OK' }}</p>{% endif %}<p>Websimulering: {{ 'pågår' if status.watering_simulated else 'stoppet' }}. Endrer ikke målte verdier eller Arduino-LED.</p><form action="/simulate" method="post"><input type="hidden" name="csrf" value="{{ session.csrf }}"><button>Simuler vanning i 5 sekunder</button></form></section>
-<p><a href="/">Oppdater status</a> · Manuell modus gjenstår: {{ status.manual_seconds }} sekunder.</p><form action="/logout" method="post"><input type="hidden" name="csrf" value="{{ session.csrf }}"><button>Logg ut</button></form>
-</main></html>
+<section>
+<h2>Lys</h2>
+<p>Automatisk modus: {{ status.mode }}<br>Sist utført: {{ status.applied or 'Ingen' }}</p>
+{% if status.error %}<p role="alert">{{ status.error }}</p>{% endif %}
+<p>Manuell modus gjelder i opptil 15 minutter. Lerret nede gir alltid kinolys.</p>
+<form action="/mode" method="post">
+<input type="hidden" name="csrf" value="{{ session.csrf }}">
+{% for mode,label in [('auto','Automatisk'),('white','Hvitt 100 %'),('warm','Gult 50 %'),('cinema','Oransje 25 %'),('off','Av')] %}
+<button name="mode" value="{{ mode }}">{{ label }}</button>
+{% endfor %}
+</form>
+</section>
+<section>
+<h2>Sensorer</h2>
+<p>{{ 'Oppdaterte målinger' if status.fresh else 'Mangler ferske målinger – lysreglene venter' }}</p>
+{% if status.sample %}
+<p>Bevegelse: {{ 'Ja' if status.sample.motion else 'Nei' }} · Lerret: {{ 'Nede' if status.sample.screen_down else 'Oppe' }}</p>
+<p>Lys ved vinduet: råverdi {{ status.sample.light_raw }} · {{ 'lyst nok' if status.sample.light_bright else 'mørkt' }}</p>
+<p>Jordfuktighet: {{ status.sample.soil_percent }} % (kalibrert anslag) · {{ 'TRENGER VANN' if status.sample.needs_water else 'Fuktighet OK' }}</p>
+{% else %}<p>Venter på sensordata.</p>{% endif %}
+{% if status.storage_error %}<p role="alert">{{ status.storage_error }}</p>{% endif %}
+<p>Historikken lagres lokalt på denne PC-en. Websimulering: {{ 'pågår' if status.watering_simulated else 'stoppet' }}; den pumper ikke vann.</p>
+<form action="/simulate" method="post"><input type="hidden" name="csrf" value="{{ session.csrf }}"><button>Simuler vanning i 5 sekunder</button></form>
+</section>
+<section>
+<h2>Siste målinger</h2>
+{% if status.history %}
+<table><thead><tr><th>Tid</th><th>Lys ved vinduet</th><th>Jord</th><th>Behov for vann</th><th>Bevegelse</th></tr></thead>
+<tbody>
+{% for row in status.history %}
+<tr><td>{{ row.observed_at }}</td><td>{{ row.light_raw }} ({{ 'lyst' if row.light_bright else 'mørkt' }})</td><td>{{ row.soil_percent }} %</td><td>{{ 'Ja' if row.needs_water else 'Nei' }}</td><td>{{ 'Ja' if row.motion else 'Nei' }}</td></tr>
+{% endfor %}
+</tbody></table>
+{% else %}<p>Historikk kommer når sensornoden sender målinger.</p>{% endif %}
+</section>
+<p><a href="/">Oppdater status</a> · Manuell modus gjenstår: {{ status.manual_seconds }} sekunder.</p>
+<form action="/logout" method="post"><input type="hidden" name="csrf" value="{{ session.csrf }}"><button>Logg ut</button></form>
+</main></body></html>

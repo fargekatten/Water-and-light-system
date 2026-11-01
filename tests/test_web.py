@@ -9,11 +9,11 @@ from datetime import datetime
 from unittest.mock import MagicMock, patch
 from werkzeug.security import generate_password_hash
 from hub import Hub
-from lighting import CINEMA, WARM
+from lighting import CINEMA, WARM, WHITE
 from webapp import create_app
 
-SAMPLE = dict(motion=0, screen_down=0, soil_raw=800, soil_percent=0,
-              needs_water=1, watering_simulated=0)
+SAMPLE = dict(motion=0, screen_down=0, light_raw=400, light_bright=0,
+              soil_raw=800, soil_percent=0, needs_water=1, watering_simulated=0)
 
 
 class WebSecurityTests(unittest.TestCase):
@@ -79,7 +79,7 @@ class WebSecurityTests(unittest.TestCase):
 
 
 class HubTests(unittest.TestCase):
-    def test_screen_cancels_override_and_exit_is_warm(self):
+    def test_screen_cancels_override_and_exit_returns_to_sensor_policy(self):
         hub = Hub()
         hub.observe(SAMPLE, now=0)
         hub.manual('white', now=1)
@@ -88,7 +88,7 @@ class HubTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             hub.manual('white', now=2)
         hub.observe(SAMPLE, now=3)
-        self.assertEqual(hub.desired(3, datetime(2026, 1, 1, 8))[0], WARM)
+        self.assertEqual(hub.desired(3, datetime(2026, 1, 1, 8))[0], WHITE)
 
     def test_expired_override_and_stale_data(self):
         hub = Hub()
@@ -96,7 +96,7 @@ class HubTests(unittest.TestCase):
         hub.manual('white', now=1)
         self.assertIsNone(hub.desired(10, datetime(2026, 1, 1, 8))[0])
         hub.observe(SAMPLE, now=902)
-        self.assertEqual(hub.desired(902, datetime(2026, 1, 1, 8))[0], WARM)
+        self.assertEqual(hub.desired(902, datetime(2026, 1, 1, 8))[0], WHITE)
         self.assertIsNone(hub.override)
 
     def test_cloud_export_contains_soil_only(self):

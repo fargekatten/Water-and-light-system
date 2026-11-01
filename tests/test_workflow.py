@@ -5,6 +5,7 @@ import unittest
 from datetime import datetime
 from unittest.mock import patch
 
+import control_hue
 from lighting import LightingPolicy, WHITE, WARM, CINEMA, OFF
 from sensor_stream import parse_sample
 from settings import required
@@ -65,6 +66,26 @@ class IntegrationTests(unittest.TestCase):
                 parse_sample(json.dumps(dict(data, **{key: value})))
         with self.assertRaises(ValueError):
             parse_sample('100,200,300')
+
+    def test_hue_request_and_api_errors(self):
+        with patch.dict(os.environ, {'HUE_BRIDGE_HOST': 'bridge.example',
+                                     'HUE_USERNAME': 'test-user'}):
+            responses = [
+                ([{'success': {'/lights/4/state/on': True}}], False),
+                ([{'error': {'description': 'unauthorized'}}], True),
+            ]
+            for response, fails in responses:
+                with patch('control_hue.urlopen',
+                           return_value=io.BytesIO(json.dumps(response).encode())) as call:
+                    if fails:
+                        with self.assertRaises(RuntimeError):
+                            control_hue.set_light(4, CINEMA)
+                    else:
+                        control_hue.set_light(4, CINEMA)
+                    request = call.call_args.args[0]
+                    self.assertEqual(request.method, 'PUT')
+                    self.assertEqual(json.loads(request.data), CINEMA)
+                    self.assertTrue(call.call_args.kwargs['context'].check_hostname)
 
 
 if __name__ == '__main__':

@@ -1,4 +1,4 @@
-"""Read serial continuously so Hue requests never queue old motion events."""
+"""Read and validate current sensor readings from USB or MQTT."""
 import json
 import threading
 import time
@@ -8,10 +8,10 @@ import serial
 
 def parse_sample(line):
     data = json.loads(line)
-    for key in ('motion', 'screen_down', 'needs_water', 'watering_simulated'):
+    for key in ('motion', 'screen_down', 'light_bright', 'needs_water', 'watering_simulated'):
         if type(data.get(key)) is not int or data[key] not in (0, 1):
             raise ValueError(f'Invalid {key}')
-    for key, maximum in (('soil_raw', 1023), ('soil_percent', 100)):
+    for key, maximum in (('soil_raw', 1023), ('soil_percent', 100), ('light_raw', 1023)):
         if type(data.get(key)) is not int or not 0 <= data[key] <= maximum:
             raise ValueError(f'Invalid {key}')
     return data
@@ -27,7 +27,6 @@ class SensorStream:
 
     def __enter__(self):
         self.port = serial.Serial(self.port_name, 115200, timeout=0.2)
-        # Opening a serial port can reset an Arduino; discard partial startup bytes.
         self.port.reset_input_buffer()
         self.thread = threading.Thread(target=self.run, daemon=True)
         self.thread.start()
@@ -48,12 +47,18 @@ class SensorStream:
                 return
             with self.lock:
                 if self.policy:
-                    self.policy.observe(bool(sample['motion']), bool(sample['screen_down']), time.monotonic())
-            status = (sample['needs_water'], sample['watering_simulated'])
+                    self.policy.observe(bool(sample['motion']), bool(sample['screen_down']),
+                                        bool(sample['light_bright']), time.monotonic())
+            status = (sample['needs_water'], sample['watering_simulated'],
+                      sample['light_bright'])
             if status != previous_status:
-                print(f"Jordfuktighet: {sample['soil_percent']} % (kalibrert anslag). "
-                      + ('TRENGER VANN. ' if status[0] else 'Fuktighet OK. ')
-                      + ('SIMULERT vanning pågår; ikke ekte vann.' if status[1] else 'Ingen simulering.'))
+                light_status = 'lyst nok' if sample['light_bright'] else 'mørkt'
+                water_status = 'TRENGER VANN' if sample['needs_water'] else 'Fuktighet OK'
+                simulation = ('SIMULERT vanning pågår; ingen pumpe.'
+                              if sample['watering_simulated'] else 'Ingen simulering.')
+                print(f"Lysmåling: {sample['light_raw']} ({light_status}). "
+                      f"Jordfuktighet: {sample['soil_percent']} % (kalibrert anslag). "
+                      f"{water_status}. {simulation}")
                 previous_status = status
 
     def __exit__(self, *args):

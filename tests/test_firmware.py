@@ -15,14 +15,14 @@ class FirmwareTests(unittest.TestCase):
 #include <sstream>
 #include <string>
 using byte = unsigned char;
-const int HIGH=1, LOW=0, INPUT=0, INPUT_PULLUP=2, OUTPUT=1, A0=14;
+const int HIGH=1, LOW=0, INPUT=0, INPUT_PULLUP=2, OUTPUT=1, A0=14, A1=15;
 unsigned long clockMs=0;
-int pins[20]={}, soilRaw=800;
+int pins[20]={}, soilRaw=800, lightRaw=300;
 unsigned long millis(){return clockMs;}
 void pinMode(int pin,int mode){if(mode==INPUT_PULLUP)pins[pin]=HIGH;}
 int digitalRead(int pin){return pins[pin];}
 void digitalWrite(int pin,int value){pins[pin]=value;}
-int analogRead(int){return soilRaw;}
+int analogRead(int pin){return pin==A1 ? lightRaw : soilRaw;}
 long map(long x,long a,long b,long c,long d){return (x-a)*(d-c)/(b-a)+c;}
 long constrain(long x,long a,long b){return x<a?a:x>b?b:x;}
 struct SerialMock {

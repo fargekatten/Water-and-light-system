@@ -81,7 +81,7 @@ def run():
             assert code != 0, 'Wrong password unexpectedly accepted'
             sensor, code = publisher('sensor-rom101', password)
             assert code == 0
-            sample = dict(motion=1, screen_down=0, soil_raw=800, soil_percent=0,
+            sample = dict(motion=1, screen_down=0, light_raw=400, light_bright=0, soil_raw=800, soil_percent=0,
                           needs_water=1, watering_simulated=0)
             deadline = time.monotonic()+8
             while hub.sample is None and time.monotonic()<deadline:

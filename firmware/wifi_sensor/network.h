@@ -13,13 +13,12 @@ unsigned long lastPublished = 0;
 bool triedConnect = false;
 int previousMotion = -1;
 int previousScreen = -1;
+int previousLightBright = -1;
 
 void wifiSetup() {
   mqtt.setServer(MQTT_HOST, 8883);
   mqtt.setBufferSize(512);
   mqtt.setSocketTimeout(1);
-  // WiFiNINA must trust the broker CA; provision via Arduino certificate tool.
-  // Never replace WiFiSSLClient with an unencrypted or unverified connection.
 }
 void wifiTick(unsigned long now) {
   if (mqtt.connected()) { mqtt.loop(); return; }
@@ -31,15 +30,19 @@ void wifiTick(unsigned long now) {
     if (mqtt.connect(MQTT_CLIENT_ID, MQTT_USER, MQTT_PASS)) {
       previousMotion = -1;
       previousScreen = -1;
+      previousLightBright = -1;
     }
   }
 }
-void wifiPublish(const char* payload, int motion, int screen, unsigned long now) {
+void wifiPublish(const char* payload, int motion, int screen, int lightBright, unsigned long now) {
   if (!mqtt.connected()) return;
-  if (motion == previousMotion && screen == previousScreen && now-lastPublished < 1000) return;
+  bool stateChanged = motion != previousMotion || screen != previousScreen ||
+                      lightBright != previousLightBright;
+  if (!stateChanged && now-lastPublished < 1000) return;
   if (mqtt.publish(MQTT_TOPIC, payload, false)) {
     previousMotion = motion;
     previousScreen = screen;
+    previousLightBright = lightBright;
     lastPublished = now;
   }
 }

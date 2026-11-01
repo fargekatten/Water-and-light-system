@@ -1,12 +1,13 @@
-"""Shared local controller. Network callbacks never talk directly to Hue."""
+"""Shared local controller for Hue, dashboard, and stored sensor readings."""
 import threading
 import time
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from lighting import LightingPolicy, WHITE, WARM, CINEMA
 
-PRESETS = {'white': WHITE, 'warm': WARM, 'cinema': CINEMA,
-           'off': {'on': False, 'transitiontime': 0}}
+from history_store import SensorHistory
+from lighting import LightingPolicy, WHITE, WARM, CINEMA, OFF
+
+PRESETS = {'white': WHITE, 'warm': WARM, 'cinema': CINEMA, 'off': OFF}
 
 
 class Hub:
@@ -20,34 +21,38 @@ class Hub:
         self.simulation_until = 0
         self.applied = None
         self.error = None
+        self.storage_error = None
+        self.history = SensorHistory()
 
     def observe(self, data, now=None):
         now = time.monotonic() if now is None else now
         with self.lock:
-            if self.policy.last_sample is None or now-self.policy.last_sample > 3:
-                self.policy.last_activity = now
-            # Physical screen always cancels manual mode, including after raising it.
-            if data['screen_down'] or self.policy.screen_down:
-                self.override = None
             self.sample = dict(data)
-            self.policy.observe(bool(data['motion']), bool(data['screen_down']), now)
+            self.policy.observe(bool(data['motion']), bool(data['screen_down']),
+                                bool(data['light_bright']), now)
+            if data['screen_down']:
+                self.override = None
+            if not self.demo:
+                try:
+                    self.history.record(data)
+                    self.storage_error = None
+                except Exception:
+                    self.storage_error = 'Lokal sensorhistorikk kunne ikke lagres; sjekk diskplass og filrettigheter.'
 
     def manual(self, mode, now=None):
         now = time.monotonic() if now is None else now
         with self.lock:
             if mode == 'auto':
                 self.override = None
-                # Resume conservatively rather than flashing white after manual mode.
-                self.policy.last_activity = now
                 return
             if mode not in PRESETS:
                 raise ValueError('Ukjent lysmodus')
-            if self.policy.last_sample is None or now-self.policy.last_sample > 3:
+            if self.policy.last_sample is None or now - self.policy.last_sample > 3:
                 raise ValueError('Ferske sensordata kreves før manuell styring')
             if self.policy.screen_down:
                 raise ValueError('Lerretet er nede; fysisk kinomodus har prioritet')
             self.override = mode
-            self.override_until = now + 15*60
+            self.override_until = now + 15 * 60
 
     def desired(self, now=None, local_time=None):
         now = time.monotonic() if now is None else now
@@ -60,16 +65,20 @@ class Hub:
                 return PRESETS[self.override].copy(), 'manuell: ' + self.override
             if self.override:
                 self.override = None
-                self.policy.last_activity = now
-                return self.policy.desired(local_time, now)
             return automatic, mode
 
     def status(self):
         now = time.monotonic()
         with self.lock:
+            try:
+                history = [] if self.demo else self.history.recent(48)
+            except Exception:
+                history = []
+                self.storage_error = 'Lokal sensorhistorikk kunne ikke leses; sjekk filrettigheter.'
             _, mode = self.desired(now)
             return dict(demo=self.demo, mode=mode, sample=self.sample,
-                        fresh=self.policy.last_sample is not None and now-self.policy.last_sample <= 3,
-                        manual_seconds=max(0, int(self.override_until-now)) if self.override else 0,
+                        fresh=self.policy.last_sample is not None and now - self.policy.last_sample <= 3,
+                        manual_seconds=max(0, int(self.override_until - now)) if self.override else 0,
                         watering_simulated=now < self.simulation_until,
-                        applied=self.applied, error=self.error)
+                        applied=self.applied, error=self.error,
+                        storage_error=self.storage_error, history=history)

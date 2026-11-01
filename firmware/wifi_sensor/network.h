@@ -16,7 +16,7 @@ int previousScreen = -1;
 int previousLightBright = -1;
 
 void wifiSetup() {
-  mqtt.setServer(MQTT_HOST, 8888);
+  mqtt.setServer(MQTT_HOST, 8883);
   mqtt.setBufferSize(512);
   mqtt.setSocketTimeout(1);
 }

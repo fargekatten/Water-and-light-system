@@ -1,8 +1,9 @@
-"""Authenticated local dashboard. Never expose this port to the Internet."""
+"""Authenticated local dashboard and Hue controller."""
 import argparse
 from collections import deque
 from datetime import timedelta
 import json
+import os
 from pathlib import Path
 import secrets
 import threading
@@ -18,11 +19,14 @@ def create_app(hub, config=None):
         config = json.loads(Path('instance/web.json').read_text())
     if len(config['secret_key']) < 32 or not config['password_hash'].startswith('scrypt:'):
         raise ValueError('Kjør python tools/setup_web.py først')
+    allowed_hosts = [host.strip() for host in os.environ.get(
+        'WEB_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if host.strip()]
     app = Flask(__name__)
     app.config.update(SECRET_KEY=config['secret_key'], MAX_CONTENT_LENGTH=4096,
-                      SESSION_COOKIE_HTTPONLY=True, SESSION_REFRESH_EACH_REQUEST=False, SESSION_COOKIE_SAMESITE='Strict',
+                      SESSION_COOKIE_HTTPONLY=True, SESSION_REFRESH_EACH_REQUEST=False,
+                      SESSION_COOKIE_SAMESITE='Strict',
                       PERMANENT_SESSION_LIFETIME=timedelta(hours=1),
-                      TRUSTED_HOSTS=['localhost', '127.0.0.1'])
+                      TRUSTED_HOSTS=allowed_hosts)
     attempts = deque()
     login_lock = threading.Lock()
 
@@ -53,7 +57,7 @@ def create_app(hub, config=None):
         if request.method == 'POST':
             with login_lock:
                 now = time.monotonic()
-                while attempts and now-attempts[0] >= 60:
+                while attempts and now - attempts[0] >= 60:
                     attempts.popleft()
                 if len(attempts) >= 5:
                     abort(429)
@@ -69,7 +73,8 @@ def create_app(hub, config=None):
 
     @app.get('/')
     def index():
-        return render_template('dashboard.html', status=hub.status(), message=request.args.get('message', ''))
+        return render_template('dashboard.html', status=hub.status(),
+                               message=request.args.get('message', ''))
 
     @app.get('/api/status')
     def status():
@@ -85,10 +90,10 @@ def create_app(hub, config=None):
 
     @app.post('/simulate')
     def simulate():
-        # A simulation changes neither measured moisture nor the physical dry warning.
         with hub.lock:
-            hub.simulation_until = time.monotonic()+5
-        return redirect(url_for('index', message='Fem sekunders vanning SIMULERES på serveren; ingen pumpe eller fysisk LED styres her.'))
+            hub.simulation_until = time.monotonic() + 5
+        return redirect(url_for(
+            'index', message='Fem sekunders vanning SIMULERES; ingen pumpe eller fysisk LED styres.'))
 
     @app.post('/logout')
     def logout():
@@ -121,8 +126,9 @@ def run_controller(hub, stop):
 
 def demo_loop(hub, stop):
     while not stop.is_set():
-        hub.observe(dict(motion=0, screen_down=0, soil_raw=800, soil_percent=0,
-                         needs_water=1, watering_simulated=0))
+        hub.observe(dict(motion=0, screen_down=0, light_raw=300, light_bright=0,
+                         soil_raw=800, soil_percent=0, needs_water=1,
+                         watering_simulated=0))
         stop.wait(1)
 
 
@@ -151,9 +157,11 @@ def main():
         from cloud_export import export_loop
         threading.Thread(target=export_loop, args=(hub, stop), daemon=True).start()
     threading.Thread(target=run_controller, args=(hub, stop), daemon=True).start()
+    host = os.environ.get('WEB_BIND_HOST', '127.0.0.1')
+    port = int(os.environ.get('WEB_PORT', '8765'))
     from waitress import serve
     try:
-        serve(app, host='127.0.0.1', port=8765, threads=4, clear_untrusted_proxy_headers=True)
+        serve(app, host=host, port=port, threads=4, clear_untrusted_proxy_headers=True)
     finally:
         stop.set()
         if client:

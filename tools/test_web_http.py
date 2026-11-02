@@ -49,5 +49,5 @@ try:
     print('PASS: real HTTP login, authorization, manual demo lighting and watering simulation; no Hue calls.')
 finally:
     stop.set()
-    server.close()
     server.task_dispatcher.shutdown()
+    server.close()

@@ -5,7 +5,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from history_store import SensorHistory
-from lighting import LightingPolicy, WHITE, WARM, CINEMA, OFF
+from lighting import LightingPolicy, WHITE, WARM, CINEMA, OFF, CINEMA_DESCRIPTION
 
 PRESETS = {'white': WHITE, 'warm': WARM, 'cinema': CINEMA, 'off': OFF}
 
@@ -64,7 +64,7 @@ class Hub:
             automatic, mode = self.policy.desired(local_time, now)
             if self.manual_only:
                 if self.policy.screen_down:
-                    return CINEMA.copy(), 'lerret nede: oransje, 25 %'
+                    return CINEMA.copy(), 'lerret nede: ' + CINEMA_DESCRIPTION
                 automatic, mode = None, 'manuell modus uten sensorer: beholder gjeldende lys'
             if (automatic is None and not self.manual_only) or self.policy.screen_down:
                 return automatic, mode

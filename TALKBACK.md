@@ -30,6 +30,15 @@ Kjør bare én kontroller mot Hue, og bare én konsument per TalkBack-kø.
    kildekode, skjermbilder, URL-er eller dokumentasjon. Ikke bruk en skole-PC til
    å lagre Hue-nøkkelen. TalkBack-nøkkelen gir kontroll over køen; del den ikke.
 
+   Velg bare ID-ene til lampene du faktisk vil styre med `HUE_LIGHT_IDS`.
+   Lamper av typen **Color temperature light** kan ikke vise oransje fargelys.
+   For disse setter du også `HUE_CINEMA_CT=454` i det lokale miljøet før oppstart.
+   CINEMA og senket lerret gir da varmhvitt lys (omtrent 2200 K) på 25 % uten
+   å sende den ustøttede `xy`-parameteren. Innstillingen gjelder alle valgte lys;
+   bruk en fargetemperatur lampene støtter (153–500 mired). I PowerShell brukes
+   `$env:HUE_CINEMA_CT = '454'`; på Mac kan linjen `HUE_CINEMA_CT=454` legges i
+   `.env`, som deretter lastes med `set -a`, `source .env`, `set +a`.
+
 ## Nå: demonstrasjon uten Arduino
 
 Helt lokal tørrkjøring, uten nøkler eller nettverk:
@@ -68,8 +77,9 @@ Logg inn på ThingSpeak og åpne din TalkBack. **Legg til en ny kommando i køen
 med nøyaktig `WHITE`, `WARM`, `CINEMA`, `OFF` eller `AUTO` i command string.
 Ikke bruk «Execute next command» selv: det fjerner kommandoen fra køen før
 hjemme-PC-en henter den. Opprett en ny kommando ved hvert trykk; ikke rediger eller
-gjenbruk gamle køelementer. WHITE er hvitt 100 %, WARM gult 50 %, CINEMA oransje
-25 %, OFF av, og AUTO avslutter den manuelle overstyringen.
+gjenbruk gamle køelementer. WHITE er hvitt 100 %, WARM gult 50 %, CINEMA kinolys
+25 % (oransje, eller varmhvitt med `HUE_CINEMA_CT`), OFF av, og AUTO avslutter
+den manuelle overstyringen.
 
 Kontrolleren poller umiddelbart og deretter med minst 16 sekunders mellomrom,
 med fem sekunders nettverkstimeout. Dette passer den vanlige gratisgrensen;

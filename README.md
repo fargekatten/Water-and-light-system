@@ -17,6 +17,11 @@ Reglene vurderes fortløpende. Prioriteten er:
 
 Lerretet overstyrer alle andre regler. Bevegelse overstyrer dagslys og tidsplan. Etter bevegelsesperioden går styringen tilbake til tids- og lysmålingen. Sensoren skal stå ved vinduet, vendt mot dagslyset, og ikke slik at Hue-pærene lyser direkte på den. Mangler ferske sensordata i mer enn tre sekunder, venter kontrolleren og lar lysene stå som de er.
 
+Lamper av typen **Color temperature light** støtter hvitfarger, men ikke oransje
+fargelys. Sett `HUE_CINEMA_CT=454` lokalt før oppstart for varmhvitt kinolys på
+25 % (omtrent 2200 K). Dette gjelder både CINEMA og lerretsstyringen. Uten denne
+innstillingen brukes oransje kinolys, som krever lamper med fargestøtte.
+
 ## Sensorer og tilkobling
 
 | Port/pinne | Kobling |

@@ -22,7 +22,7 @@
 <p>Manuell modus gjelder i opptil 15 minutter. Registrert lerret nede gir alltid kinolys.</p>
 <form action="/mode" method="post">
 <input type="hidden" name="csrf" value="{{ session.csrf }}">
-{% for mode,label in [('auto','Automatisk'),('white','Hvitt 100 %'),('warm','Gult 50 %'),('cinema','Oransje 25 %'),('off','Av')] %}
+{% for mode,label in [('auto','Automatisk'),('white','Hvitt 100 %'),('warm','Gult 50 %'),('cinema','Kinolys 25 %'),('off','Av')] %}
 <button name="mode" value="{{ mode }}">{{ label }}</button>
 {% endfor %}
 </form>
